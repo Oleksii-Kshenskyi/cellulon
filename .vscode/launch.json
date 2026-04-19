@@ -1,0 +1,18 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug cellulon (lldb)",
+      "type": "lldb",
+      "request": "launch",
+      // xmake's default output path. If you've customized it, adjust here.
+      // On Windows this will end in .exe — CodeLLDB handles that via ${command}
+      // style expansions, but the simplest portable approach is to just
+      // maintain three configs if you need them. For Linux/Mac this is fine.
+      "program": "${workspaceFolder}/build/linux/x86_64/debug/cellulon",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "preLaunchTask": "xmake: build"
+    }
+  ]
+}
