@@ -2,17 +2,23 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Debug cellulon (lldb)",
+      "name": "Debug mygame (lldb)",
       "type": "lldb",
       "request": "launch",
-      // xmake's default output path. If you've customized it, adjust here.
-      // On Windows this will end in .exe — CodeLLDB handles that via ${command}
-      // style expansions, but the simplest portable approach is to just
-      // maintain three configs if you need them. For Linux/Mac this is fine.
-      "program": "${workspaceFolder}/build/linux/x86_64/debug/cellulon",
+      // xmake's default output path per platform.
+      // Adjust the arch (x86_64 / arm64) if it doesn't match your machine.
       "args": [],
       "cwd": "${workspaceFolder}",
-      "preLaunchTask": "xmake: build"
+      "preLaunchTask": "xmake: build",
+      "linux": {
+        "program": "${workspaceFolder}/build/linux/x86_64/debug/mygame"
+      },
+      "osx": {
+        "program": "${workspaceFolder}/build/macosx/arm64/debug/mygame"
+      },
+      "windows": {
+        "program": "${workspaceFolder}/build/windows/x86_64/debug/mygame.exe"
+      }
     }
   ]
 }

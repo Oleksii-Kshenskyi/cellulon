@@ -23,3 +23,5 @@ compile_commands.json
 # OS / editor
 .DS_Store
 *.swp
+
+CLAUDE.md

@@ -1,6 +1,5 @@
-# Points clangd at the compile_commands.json that xmake generates.
-# The after_build hook in xmake.lua writes it to the project root,
-# so this stays simple.
+# Points clangd at the compile_commands.json that the xmake-vscode
+# extension generates in .vscode/.
 CompileFlags:
   CompilationDatabase: .
 
