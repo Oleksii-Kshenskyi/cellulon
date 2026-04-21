@@ -1,0 +1,53 @@
+#ifndef _UTILS_HPP_
+#define _UTILS_HPP_
+// The idea of this file is - it's a collection of seemingly random functinons/classes/helpers that are going to be used across the Cellulon codebase.
+// What makes it slightly different from your usual utils headers is - it is specifically designed to make C++ less "painful" for me. It can use some seemingly "hacky" or "unidiomatic" solutions, if so that would be by design - the intention is not to write hyper-optimized code, but instead write code in a way that's compatible and understandable for my brain (and less annoying than default C++).
+
+#include <cstdint>
+#include <random>
+#include <concepts>
+
+/// Synonym of static_cast. Makes static_cast less annoying to write out and approaches how conversions are done in several other languages.
+template<typename T, typename U>
+constexpr T as(U value) { return static_cast<T>(value); }
+
+//Number type aliases. Yeah yeah, nonstandard, blah blah. I know, don't care. Keeps me sane.
+using i16 = int16_t;
+using i32 = int32_t;
+using i64 = int64_t;
+using u16 = uint16_t;
+using u32 = uint32_t;
+using u64 = uint64_t;
+using f32 = float;
+using f64 = double;
+
+//IDEA: at some point, potentially, implement logging / OR integrate Imgui for greater debug visibility into what's happening in the simulation.
+
+//TODO: [[!!]] Develop an assertion system for debug/release builds to agressively sanity-check all-the-things.
+
+//TODO: figure out how/where to take random implementation from, because default C++ implementations suck eyss.
+namespace cellulon::random {
+    class GameRNG {
+        public:
+            explicit GameRNG(u64 seed): engine(seed) {} // construct from deterministic seed
+            GameRNG(): engine(std::random_device{}()) {} // construct from entropy
+
+            template<std::integral Ti>
+            Ti range(Ti min, Ti max) {
+                std::uniform_int_distribution<Ti> dist {min, max};
+                return dist(this->engine);
+            }
+
+            template<std::floating_point Tf>
+            Tf range(Tf min, Tf max) {
+                std::uniform_real_distribution<Tf> dist {min, max};
+                return dist(this->engine);
+            }
+        private:
+            std::mt19937_64 engine;
+    };
+}
+
+//TODO: [[!!]] Develop an Option/Result alternative to use for error handling in Cellulon.
+
+#endif

@@ -1,17 +1,28 @@
-#include <format>
-
 #include <cstdlib>
 
 #include <entt/entt.hpp>
 #include <raylib.h>
 
 #include "constants.hpp"
+#include "utils.hpp"
+#include "simulation.hpp"
 
 namespace cnst = cellulon::constants;
+namespace sim = cellulon::simulation;
 
-template<typename T, typename U>
-constexpr T as(U value) { return static_cast<T>(value); }
+void create_initial_population(entt::registry& registry) {
+    for(u32 i = 0; i < cnst::INITIAL_CELL_COUNT; i++) {
+        const auto cell_entt = registry.create();
+        //TODO: step1: spawn a position for the agent.
+        //TODO: step2: spawn a color for the agent.
+        //TODO: step3: spawn a Cell marker struct for the agent.
+        //NOTE: refer to TODOs in Simulation/Utils for basic generic tools needed for this.
+    }
+}
 
+
+// REFACTOR: Potentially rewrite this as a RenderTexture2D:
+// Render grid to texture once => draw with one call each frame.
 void draw_grid_lines() {
     const auto [screen_width, screen_height] = std::make_tuple(GetScreenWidth(), GetScreenHeight());
     const auto [x_cells, x_free_real_estate] = std::div(screen_width, cnst::CELL_SIZE);
@@ -34,8 +45,6 @@ void draw_grid_lines() {
         DrawLineEx(from, to, cnst::MARGIN_SIZE, cnst::GRID_LINE_COLOR);
         y_pos += cnst::CELL_SIZE;
     }
-
-    DrawText(std::format("CELL COUNT: {}", x_cells * y_cells).c_str(), 10, 10, 20, WHITE);
 }
 
 int main() {
@@ -45,6 +54,7 @@ int main() {
     SetTargetFPS(cnst::TARGET_FPS);
 
     entt::registry registry;
+    create_initial_population(registry);
 
     while (!WindowShouldClose()) {
         BeginDrawing();
