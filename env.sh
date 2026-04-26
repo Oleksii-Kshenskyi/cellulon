@@ -1,0 +1,1 @@
+alias runsan="LSAN_OPTIONS=suppressions=$CELL/lsan.supp xmake run cellulon"

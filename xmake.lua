@@ -27,6 +27,12 @@ target("cellulon")
     add_files("src/*.cpp")
     add_packages("raylib", "entt")
 
+    -- NOTE: uncomment if sanitization needed.
+    -- if is_mode("debug") then
+    --     add_cxxflags("-fno-omit-frame-pointer", "-fsanitize=address,undefined")
+    --     add_ldflags("-fsanitize=address,undefined", {force = true})
+    -- end
+
     -- On macOS raylib needs these frameworks; xmake's raylib package
     -- usually pulls them automatically, but being explicit is harmless.
     if is_plat("macosx") then

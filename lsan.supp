@@ -1,0 +1,7 @@
+leak:dbus
+leak:libdbus
+leak:libwayland
+leak:libGL
+leak:libEGL
+leak:libpulse
+leak:libpipewire

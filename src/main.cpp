@@ -13,10 +13,10 @@ namespace sim = cellulon::simulation;
 void create_initial_population(entt::registry& registry) {
     for(u32 i = 0; i < cnst::INITIAL_CELL_COUNT; i++) {
         const auto cell_entt = registry.create();
-        //TODO: step1: spawn a position for the agent.
-        //TODO: step2: spawn a color for the agent.
-        //TODO: step3: spawn a Cell marker struct for the agent.
-        //NOTE: refer to TODOs in Simulation/Utils for basic generic tools needed for this.
+        // TODO: step1: spawn a position for the agent.
+        // TODO: step2: spawn a color for the agent.
+        // TODO: step3: spawn a Cell marker struct for the agent.
+        // NOTE: refer to TODOs in Simulation/Utils for basic generic tools needed for this.
     }
 }
 
@@ -54,6 +54,7 @@ int main() {
     SetTargetFPS(cnst::TARGET_FPS);
 
     entt::registry registry;
+
     create_initial_population(registry);
 
     while (!WindowShouldClose()) {

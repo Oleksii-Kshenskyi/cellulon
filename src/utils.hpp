@@ -6,6 +6,9 @@
 #include <cstdint>
 #include <random>
 #include <concepts>
+#include <cstdlib>
+#include <source_location>
+#include <print>
 
 /// Synonym of static_cast. Makes static_cast less annoying to write out and approaches how conversions are done in several other languages.
 template<typename T, typename U>
@@ -23,7 +26,32 @@ using f64 = double;
 
 //IDEA: at some point, potentially, implement logging / OR integrate Imgui for greater debug visibility into what's happening in the simulation.
 
-//TODO: [[!!]] Develop an assertion system for debug/release builds to agressively sanity-check all-the-things.
+namespace cellulon {
+    [[noreturn]] inline void assertion_failed(
+        const char* expression,
+        const char* message,
+        std::source_location loc = std::source_location::current()
+    ) {
+        std::print("\n[ASSERTION FAILED] WHERE? => {}:{} in function {}:\n",
+            loc.file_name(),
+            loc.line(),
+            loc.function_name());
+        std::print("    WHAT? => `{}`;\n", expression);
+        std::print("    WHY? => `{}`.\n\n", message);
+        std::abort();
+    }
+}
+
+#define CL_ASSERT(expr, msg) \
+    do {if(!(expr)) [[unlikely]] \
+        ::cellulon::assertion_failed(#expr, msg); \
+    } while(false)
+
+#ifdef NDEBUG
+    #define CL_DBG_ASSERT(expr, msg) do {} while(false);
+#else
+    #define CL_DBG_ASSERT(expr, msg) CL_ASSERT(expr, msg);
+#endif
 
 //TODO: figure out how/where to take random implementation from, because default C++ implementations suck eyss.
 namespace cellulon::random {
