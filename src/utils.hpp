@@ -53,7 +53,7 @@ namespace cellulon {
     #define CL_DBG_ASSERT(expr, msg) CL_ASSERT(expr, msg);
 #endif
 
-//TODO: figure out how/where to take random implementation from, because default C++ implementations suck eyss.
+// FIXME: does GameRNG implementation have all I need for randomization of the first simulation MVP?
 namespace cellulon::random {
     class GameRNG {
         public:
@@ -76,6 +76,8 @@ namespace cellulon::random {
     };
 }
 
-//TODO: [[!!]] Develop an Option/Result alternative to use for error handling in Cellulon.
+// TODO: [[!!]] Develop an Option/Result alternative to use for error handling in Cellulon.
+
+// TODO: Implement mini-test framework according to knowledge/on_testing.md.
 
 #endif

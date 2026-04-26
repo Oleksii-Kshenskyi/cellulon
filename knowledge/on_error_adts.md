@@ -228,7 +228,7 @@ template<typename T, typename E = Error>
 Result<T,E> Ok(T value) { return Result<T,E>::ok(std::move(value)); }
 
 template<typename T = std::monostate, typename E = Error>
-Result<T,E> Err(E error) { return Result<T,E>::err(std::move(error)}; }
+Result<T,E> Err(E error) { return Result<T,E>::err(std::move(error))}; }
 
 } // namespace cellulon
 ```

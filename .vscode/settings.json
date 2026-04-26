@@ -25,5 +25,5 @@
   // Make the xmake-vscode plugin write compile_commands.json to the project
   // root so it stays consistent with the CLI rule in xmake.lua and clangd
   // picks it up via .clangd's CompilationDatabase setting.
-  "xmake.compileCommandsDirectory": "${workspaceFolder}"
+  "xmake.compileCommandsDirectory": "."
 }
