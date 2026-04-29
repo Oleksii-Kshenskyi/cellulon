@@ -1,6 +1,6 @@
 #ifndef _UTILS_HPP_
 #define _UTILS_HPP_
-// The idea of this file is - it's a collection of seemingly random functinons/classes/helpers that are going to be used across the Cellulon codebase.
+// The idea of this file is - it's a collection of seemingly random functions/classes/helpers that are going to be used across the Cellulon codebase.
 // What makes it slightly different from your usual utils headers is - it is specifically designed to make C++ less "painful" for me. It can use some seemingly "hacky" or "unidiomatic" solutions, if so that would be by design - the intention is not to write hyper-optimized code, but instead write code in a way that's compatible and understandable for my brain (and less annoying than default C++).
 
 #include <cstdint>
@@ -14,7 +14,7 @@
 template<typename T, typename U>
 constexpr T as(U value) { return static_cast<T>(value); }
 
-//Number type aliases. Yeah yeah, nonstandard, blah blah. I know, don't care. Keeps me sane.
+// Number type aliases. Yeah yeah, nonstandard, blah blah. I know, don't care. Keeps me sane.
 using i16 = int16_t;
 using i32 = int32_t;
 using i64 = int64_t;
@@ -24,7 +24,7 @@ using u64 = uint64_t;
 using f32 = float;
 using f64 = double;
 
-//IDEA: at some point, potentially, implement logging / OR integrate Imgui for greater debug visibility into what's happening in the simulation.
+// IDEA: at some point, potentially, implement logging / OR integrate Imgui for greater debug visibility into what's happening in the simulation.
 
 namespace cellulon {
     [[noreturn]] inline void assertion_failed(
