@@ -2,6 +2,10 @@
 #define _SIMULATION_HPP_
 
 #include "utils.hpp"
+// NOTE: [[!!]] Using EnTT is fine here if absolutely necessary, but
+//              !!UNDER ANY CIRCUMSTANCES, NEVER INCLUDE RAYLIB HERE!!
+// This is because simulation has to be able to run headless, therefore
+// it has to be completely decoupled from graphics.
 
 namespace cellulon::simulation {
     struct XY {

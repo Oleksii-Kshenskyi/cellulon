@@ -2,7 +2,6 @@
 #define _CONSTANTS_H_
 
 #include "raylib.h"
-#include <cstdint>
 
 #include "utils.hpp"
 

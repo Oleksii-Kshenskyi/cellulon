@@ -47,3 +47,27 @@ target("cellulon")
             add_syslinks("c++abi")
         end
     end
+
+target("celltest")
+    set_kind("binary")
+    add_includedirs("src", "celltest")
+    add_files("celltest/*.cpp")
+    add_defines("CELLTEST")
+
+    if is_mode("debug") then
+        add_cxxflags("-fno-omit-frame-pointer",
+                     "-fsanitize=address,undefined")
+        add_ldflags("-fsanitize=address,undefined", {force = true})
+    end
+
+    -- Clang has exceptions on by default. This is just to document that exceptions are only deliberately used in testing, but not in the main executable.
+    add_cxxflags("-fexceptions", {tools = {"clang"}})
+
+    if is_plat("linux", "macosx", "mingw") then
+        add_cxxflags("-stdlib=libc++", {tools = {"clang"}})
+        add_ldflags("-stdlib=libc++", {tools = {"clang"}, force = true})
+        if is_plat("linux") then
+            add_syslinks("c++abi")
+        end
+    end
+

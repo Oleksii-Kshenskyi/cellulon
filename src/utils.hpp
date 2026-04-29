@@ -1,10 +1,11 @@
 #ifndef _UTILS_HPP_
 #define _UTILS_HPP_
 // The idea of this file is - it's a collection of seemingly random functions/classes/helpers that are going to be used across the Cellulon codebase.
-// What makes it slightly different from your usual utils headers is - it is specifically designed to make C++ less "painful" for me. It can use some seemingly "hacky" or "unidiomatic" solutions, if so that would be by design - the intention is not to write hyper-optimized code, but instead write code in a way that's compatible and understandable for my brain (and less annoying than default C++).
+// What makes it slightly different from your usual utils headers is - it is specifically designed to make C++ less "painful" for me. It can use some seemingly "hacky" or "unidiomatic" solutions, if so that would be by design - the intention is not to write hyper-optimized code, but instead write code in a way that's compatible with and understandable for my brain (and less annoying than default C++).
 
 #include <cstdint>
 #include <random>
+#include <type_traits>
 #include <concepts>
 #include <cstdlib>
 #include <source_location>
@@ -73,6 +74,73 @@ namespace cellulon::random {
             }
         private:
             std::mt19937_64 engine;
+    };
+}
+
+namespace cellulon {
+    struct NoneType { explicit constexpr NoneType() = default; };
+    constexpr inline NoneType None {};
+
+    template <typename T>
+    struct SomeType {
+        T value;
+    };
+
+    template <typename T>
+    constexpr SomeType<std::decay_t<T>> Some(T&& new_val) {
+        return SomeType<std::decay_t<T>> { std::forward<T>(new_val) };
+    }
+
+    // TODO: Copy/move constructors
+    // TODO: assignments from Some and Option
+    // TODO: at least a basic .map() + .and_then()
+    template <typename T>
+    class Option {
+        public:
+            constexpr Option<T>& reset_to_none() {
+                if(this->_is_some) {
+                    this->_is_some = false;
+                    std::destroy_at(&this->value);
+                }
+                this->no_value = 0;
+
+                return *this;
+            }
+
+            constexpr Option(NoneType n) noexcept: _is_some(false) {}
+            constexpr Option() noexcept: _is_some(false) {}
+
+            template<typename U>
+                requires std::constructible_from<T, U&&>
+            constexpr Option(SomeType<U> some_v): _is_some(true) {
+                std::construct_at(&this->value, std::move(some_v.value));
+            }
+
+            constexpr Option<T>& operator=(NoneType n) noexcept {
+                this->reset_to_none();
+                return *this;
+            }
+
+            constexpr bool is_some() {
+                return this->_is_some;
+            }
+            constexpr bool is_none() {
+                return !this->_is_some;
+            }
+
+            constexpr ~Option() requires std::is_trivially_destructible_v<T> = default;
+            constexpr ~Option() {
+                if(this->_is_some) {
+                    this->_is_some = false;
+                    std::destroy_at(&this->value);
+                }
+            }
+        private:
+            union {
+                T value;
+                char no_value {};
+            };
+            bool _is_some;
     };
 }
 
