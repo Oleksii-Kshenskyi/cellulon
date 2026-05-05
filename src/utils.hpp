@@ -91,13 +91,13 @@ namespace cellulon {
         return SomeType<std::decay_t<T>> { std::forward<T>(new_val) };
     }
 
-    // TODO: Copy/move constructors
-    // TODO: assignments from Some and Option
+    // TODO: constructors, copy/move handling, assignments from Some and Option
+    // TODO: unwraps
     // TODO: at least a basic .map() + .and_then()
     template <typename T>
     class Option {
         public:
-            constexpr Option<T>& reset_to_none() {
+            constexpr Option<T>& reset() {
                 if(this->_is_some) {
                     this->_is_some = false;
                     std::destroy_at(&this->value);
@@ -109,6 +109,16 @@ namespace cellulon {
 
             constexpr Option(NoneType n) noexcept: _is_some(false) {}
             constexpr Option() noexcept: _is_some(false) {}
+            Option(const Option& other) = delete;
+
+            constexpr Option(Option&& other) noexcept
+                requires std::movable<T>
+                : _is_some(other._is_some) {
+                if(other._is_some) {
+                    std::construct_at(&this->value, std::move(other.value));
+                    other.reset();
+                }
+            }
 
             template<typename U>
                 requires std::constructible_from<T, U&&>
@@ -117,23 +127,41 @@ namespace cellulon {
             }
 
             constexpr Option<T>& operator=(NoneType n) noexcept {
-                this->reset_to_none();
+                this->reset();
+                return *this;
+            }
+            Option<T>& operator=(const Option& other) = delete;
+            constexpr Option<T>& operator=(Option&& other) noexcept
+                requires std::movable<T> {
+                this->reset();
+
+                this->_is_some = other._is_some;
+                if(other._is_some) {
+                    std::construct_at(&this->value, std::move(other.value));
+                    other.reset();
+                }
+
                 return *this;
             }
 
-            constexpr bool is_some() {
+            Option<T> clone() const&
+                requires std::copyable<T> {
+                if(this->_is_some) {
+                    return Option { Some(this->value) };
+                }
+                return Option { None };
+            }
+
+            [[nodiscard]] constexpr bool is_some() const {
                 return this->_is_some;
             }
-            constexpr bool is_none() {
+            [[nodiscard]] constexpr bool is_none() const {
                 return !this->_is_some;
             }
 
             constexpr ~Option() requires std::is_trivially_destructible_v<T> = default;
             constexpr ~Option() {
-                if(this->_is_some) {
-                    this->_is_some = false;
-                    std::destroy_at(&this->value);
-                }
+                this->reset();
             }
         private:
             union {

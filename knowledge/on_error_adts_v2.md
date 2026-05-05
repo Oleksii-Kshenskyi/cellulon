@@ -53,6 +53,7 @@ Non-negotiable. The right column is what we ship. The left column is for context
 | `inspect(f)`               | `inspect(f)`              | `f: T const&  -> void`. Returns `*this`. |
 | `ok_or(e)`                 | `ok_or(e)`                | `Option<T> -> Result<T, E>`.           |
 | `ok_or_else(f)`            | `ok_or_else(f)`           |                                        |
+| `clone()` (via `Clone`)    | `clone()`                 | Explicit copy; requires `T: std::copyable`. Copy ctor is deleted — this is the only spelling. Deleted for rvalue `*this`. |
 
 Deliberately left out for v1: `as_ref`, `as_deref`, `flatten`, `zip`, `xor`, `iter`. Add when needed.
 
@@ -79,6 +80,7 @@ Deliberately left out for v1: `as_ref`, `as_deref`, `flatten`, `zip`, `xor`, `it
 | `inspect_err(f)`       | `inspect_err(f)`      |                                                    |
 | `ok()`                 | `ok()`                | `Result<T,E> -> Option<T>`.                        |
 | `err()`                | `err()`               | `Result<T,E> -> Option<E>`.                        |
+| `clone()` (via `Clone`)| `clone()`             | Explicit copy; requires both `T` and `E` to satisfy `std::copyable`. Copy ctor is deleted — this is the only spelling. Deleted for rvalue `*this`. |
 
 Deliberately left out for v1: `as_ref`, `as_mut`, `iter`, `transpose`. Add when needed.
 
@@ -124,7 +126,8 @@ Special members are written explicitly. They follow these rules:
   constexpr ~Option() { if (has_value_) std::destroy_at(&value_); }
   ```
 
-- **Copy / move** are conditionally trivial (`= default` when `T`/`E` are trivially copyable/movable; otherwise hand-written). Conditionally deleted when `T`/`E` are not copyable/movable.
+- **Copy** is always deleted. `Option` and `Result` are uniformly move-only regardless of whether `T` or `E` is copyable. The only sanctioned way to copy is through the explicit `.clone()` method, which requires `T` (and `E` for `Result`) to satisfy `std::copyable`. This makes every copy visible at the call site — reading `.clone()` in code means a copy was intentional. `.clone()` is also ref-qualified `const&` only; calling it on an rvalue (`std::move(opt).clone()`) is deleted, because that would be a pointless copy of a value you were already discarding.
+- **Move** is hand-written (or `= default` where trivially applicable). Move ctor and move assignment are always available.
 - **Assignment** is the dangerous one — destroy-old-then-construct-new is the rule, with strong exception guarantees only when the active member's move ctor is `noexcept`. We will simply require move ctors to be `noexcept` and assert on this with a `static_assert` at the top of the class, instead of writing the strong-guarantee dance. Cellulon's component types can satisfy this trivially.
 - **Move-from semantics**: after `std::move(opt).unwrap()` or `opt.take()`, `opt` becomes `None`. After `std::move(res).unwrap()`, the rule we'll pick is "the `T` is moved out; `is_ok_` stays true; `value_` is in a moved-from state". This matches stdlib `expected` and is the conservative choice. (Rust's `Result` is destroyed-by-move at the language level — we can't quite replicate that.)
 
@@ -207,7 +210,7 @@ public:
         std::construct_at(&value_, std::move(s.value));
     }
 
-    // ... copy/move/assign/etc.
+    // ... move/assign/clone/etc.
 };
 
 template<typename T, typename E>
@@ -225,7 +228,7 @@ public:
         std::construct_at(&error_, std::move(err.value));
     }
 
-    // ... copy/move/assign/etc.
+    // ... move/assign/clone/etc.
 };
 ```
 
@@ -251,36 +254,41 @@ Notes on the proxy approach:
 - The proxy types are private-feeling but live in `cellulon::` because `Some`/`Ok`/`Err` need to be discoverable. They're not meant to be named explicitly.
 - The proxy holds the value by value (not by reference) so it's safe to return from `Some(...)`. RVO/copy-elision and the proxy's move ctor handle the rest.
 - Cross-type assignment (`Option<long> y = Some(5);`) Just Works because of the templated converting constructor.
-- For non-copyable / move-only types, `Some(std::move(x))` is the spelling. We never silently copy.
+- `Option` and `Result` are always move-only — copy construction is deleted unconditionally. `Some(std::move(x))` is always the spelling for a value you're transferring. If you need a copy, call `.clone()` first: `Some(x.clone())` or `opt.clone()`. We never silently copy.
 
 ## `Error` type
 
-Default error type. Owning, with optional cause chain.
+Default error type. Owning, copyable, with an ordered context chain.
 
 ```cpp
 namespace cellulon {
 
-struct Error {
+struct ErrorFrame {
     std::string message;
     std::source_location where;
-    std::unique_ptr<Error> cause;  // optional, nullable, nullable, nullable.
+};
+
+struct Error {
+    std::vector<ErrorFrame> chain;
+    // chain[0] is the root cause; chain.back() is the outermost context.
 
     explicit Error(
         std::string msg,
         std::source_location loc = std::source_location::current()
-    ) : message(std::move(msg)), where(loc), cause(nullptr) {}
+    ) {
+        this->chain.push_back(ErrorFrame{ std::move(msg), loc });
+    }
 
-    // Chain: returns a new Error whose `cause` is `*this` (moved).
+    // Appends a context layer and returns *this (consumed as rvalue).
     Error context(
         std::string ctx,
         std::source_location loc = std::source_location::current()
     ) && {
-        Error wrapped(std::move(ctx), loc);
-        wrapped.cause = std::make_unique<Error>(std::move(*this));
-        return wrapped;
+        this->chain.push_back(ErrorFrame{ std::move(ctx), loc });
+        return std::move(*this);
     }
 
-    // Walks the cause chain, prints "msg\n  caused by: msg\n  caused by: ..."
+    // Walks the chain, prints "msg\n  caused by: msg\n  caused by: ..."
     std::string format() const;
 };
 
@@ -289,10 +297,11 @@ struct Error {
 
 Decisions baked in:
 
-- `message` owns its `std::string`. No `string_view` traps.
-- `cause` is `unique_ptr<Error>` so cause chains compose without copying. Single owner. `format()` walks the chain.
-- The chained `context()` method takes `&&` so it always consumes. If you accidentally call it on an lvalue, you get a compile error — which is the correct outcome, because a non-consuming version would silently drop the chain.
-- `source_location` is captured at every Error construction (including each `.context()` call), so the cause chain has location info at every level. This is a meaningful upgrade over Rust's `anyhow::Error` and is essentially free.
+- Each frame owns its `std::string` message. No `string_view` traps.
+- The chain is a flat `std::vector<ErrorFrame>` rather than a heap-allocated linked list. A linked list was the wrong structure for what is simply an ordered sequence of frames: it forced `unique_ptr` recursion, made `Error` non-copyable, and would have broken `Result<T, Error>::clone()`. The vector is copyable, has no pointer indirection, and `format()` is a straightforward loop.
+- `source_location` is captured in every frame (construction and each `.context()` call), so the chain carries location info at every level.
+- The chained `context()` method takes `&&` so it always consumes. Calling it on an lvalue is a compile error — which is correct, because a non-consuming version would silently accumulate nothing useful.
+- `Error` is copyable by default (all members are copyable), so `Result<T, Error>::clone()` works without any special-casing.
 
 For typed errors (e.g. `enum class ParseErr { ... }`), `Result<T, ParseErr>` works fine — the default `E = Error` is just a default. We never assume `E == Error` in the implementation.
 
@@ -413,7 +422,7 @@ public:
 These are the calls that need to be made before implementing. I've taken positions on each; flip them if you disagree.
 
 1. **Reference types (`Option<T&>`).** Supported via partial specialization, stored as `T*`. Construction from `T&`. `unwrap()` returns `T&`. No `Result<T&, E>` until needed.
-2. **Move-only types.** Supported. Copy ops conditionally deleted. `Some(std::move(x))` is the explicit spelling.
+2. **Move-only wrappers, always.** Copy construction and copy assignment are unconditionally deleted on both `Option` and `Result`, regardless of `T`/`E` copyability. `Some(std::move(x))` is the spelling when transferring a value. When a genuine copy is needed, use `.clone()` — it requires `T` (and `E` for `Result`) to satisfy `std::copyable`, returns a new owning value as an rvalue, and is deleted when called on an rvalue `*this`.
 3. **Move-from state.** `Option`: `take()` and `std::move(opt).unwrap()` both leave the source as `None`. `Result`: `unwrap` from rvalue moves the value out but leaves `is_ok_ = true`; subsequent `unwrap()` is UB / asserts only if you guard against double-move (we don't, document it).
 4. **`noexcept`.** All internal moves are `noexcept`. Static-assert that `T` and `E` have `noexcept` move ctors. If they don't, the user fixes their type. Cellulon's components and Errors all satisfy this trivially.
 5. **`constexpr`.** Aim for everything to be `constexpr`-eligible. Won't always be (anything that touches `assertion_failed` won't), but the value-typed ops (`map`, `and_then` over a constexpr `T`) should be.
@@ -421,7 +430,7 @@ These are the calls that need to be made before implementing. I've taken positio
 7. **Hashing.** Skip until we put one in a hash set. When we do, an `std::hash` specialization is fine.
 8. **`format`/`print` integration.** `std::formatter<Option<T>>` and `std::formatter<Result<T, E>>` are nice-to-have. Defer until we have a real debug-print use case. `Error::format()` already exists for the common case.
 9. **Allocator awareness.** No. We don't custom-allocate.
-10. **Aborting on copy of `Result<T, E>` where `E = Error`.** `Error` contains a `unique_ptr<Error>`, so it's move-only. Therefore `Result<T, Error>` is move-only. This is fine and arguably correct — errors should rarely be copied. If a callsite needs to fan out the same error to multiple consumers, it can `.format()` to a string and copy that.
+10. **`Result<T, Error>` and `.clone()`.** `Error` is copyable (its `chain` is a `std::vector<ErrorFrame>`, both members of which are copyable). Therefore `Result<T, Error>::clone()` compiles and works whenever `T` is also copyable. Cloning a `Result` containing an `Error` performs a deep copy of the frame vector, which is fine — this is rare in practice and the cost is proportional to the chain length, which is small.
 
 ## Out of scope (deliberately)
 
